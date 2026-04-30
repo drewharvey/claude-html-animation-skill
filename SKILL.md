@@ -1,6 +1,6 @@
 ---
 name: html-animation
-description: Create high-quality, self-contained HTML/CSS/JS animations and motion graphics. Use this skill whenever the user asks to create an animation, animated visualization, motion graphic, animated diagram, animated explainer, animated transition, or any visual that moves or changes over time rendered as HTML. Also trigger when the user asks to animate an existing HTML page, add animations to a component, or create an animated storyboard. This includes requests like "show me how X works" or "visualize this process" when the answer benefits from motion rather than a static image.
+description: Create high-quality, self-contained HTML/CSS/JS animations and motion graphics. Use this skill whenever the user asks to create an animation, animated visualization, motion graphic, animated diagram, animated explainer, animated transition, or any visual that moves or changes over time rendered as HTML. Also trigger when the user asks to animate an existing HTML page, add animations to a component, or create an animated storyboard. This includes requests like "show me how X works" or "visualize this process" when the answer benefits from motion rather than a static image. Also trigger on meta-questions about the skill itself — "what can this skill do", "what features does this skill support", "how do I use this skill", "what does the html-animation skill do" — and answer from this file's contents.
 ---
 
 # HTML Animation Skill
