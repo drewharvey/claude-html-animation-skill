@@ -54,7 +54,7 @@ Adapt the accent color to the project context if one is provided. The palette ab
 
 ### Multiple themes
 
-Add multiple themes only when the user requests them ("with a light mode", "support both themes", "add a light theme toggle", etc.). To support multiple themes, four things change:
+Add multiple themes only when the user requests them ("with a light mode", "support both themes", "add a light theme toggle", etc.). To support multiple themes, five things change:
 
 **1. Add a palette block per additional theme** keyed off `[data-theme="<name>"]`. Example light palette:
 
@@ -94,17 +94,31 @@ The first theme listed in the meta tag below is the default (no attribute on `<h
 <button class="ctrl-btn" id="themeBtn" onclick="toggleTheme()">☀ Light</button>
 ```
 
-**4. Add the toggle function and an iframe-friendly postMessage listener**:
+**4. Add the toggle function, persistence, and an iframe-friendly postMessage listener**:
 
 ```javascript
 function toggleTheme() {
   const l = document.documentElement.getAttribute('data-theme') === 'light';
-  document.documentElement.setAttribute('data-theme', l ? 'dark' : 'light');
+  const next = l ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
   document.getElementById('themeBtn').textContent = l ? '☀ Light' : '🌙 Dark';
+  try { localStorage.setItem('animTheme', next); } catch(e){}
+}
+// Sync button label if theme was restored from localStorage on load:
+if (document.documentElement.getAttribute('data-theme') === 'light') {
+  document.getElementById('themeBtn').textContent = '🌙 Dark';
 }
 window.addEventListener('message', function(e) {
   if (e.data && e.data.theme) document.documentElement.setAttribute('data-theme', e.data.theme);
 });
+```
+
+**5. Add the early-load restore script** to `<head>`, **before** `<style>`. This is required so Reset (which calls `location.reload()`) preserves the chosen theme — without it, the user can't iterate while comparing themes. Placing the script before `<style>` sets the attribute before CSS evaluates, so there's no theme flash on reload:
+
+```html
+<script>
+  try { var t = localStorage.getItem('animTheme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){}
+</script>
 ```
 
 For more than two themes, generalize the toggle to cycle through the declared list rather than flipping a boolean.
@@ -113,7 +127,7 @@ For more than two themes, generalize the toggle to cycle through the declared li
 
 A *color scheme* is an alternative palette family the viewer can switch between (e.g. a brand palette, a vibrant variant, a corporate variant). Schemes are **orthogonal** to the dark/light theme axis: each scheme can have its own dark and light variants. They are opt-in — add them only when the user explicitly asks ("add palette options", "let me try different colors", "include a brand-color variant", "with multiple color schemes"). Do not add schemes by default.
 
-When schemes are present, the controls bar gets a *scheme picker* — small gradient swatches that visually preview each scheme. Four things change:
+When schemes are present, the controls bar gets a *scheme picker* — small gradient swatches that visually preview each scheme. Five things change:
 
 **1. Define each scheme** keyed off `[data-scheme="<name>"]`. The default scheme uses bare `:root` (no scheme attribute). For each non-default scheme, add a `:root[data-scheme="<name>"]` block. If multi-theme is also enabled, add a matching `:root[data-theme="light"][data-scheme="<name>"]` block per scheme so each scheme works in both brightness modes:
 
@@ -176,7 +190,7 @@ Every scheme block must override every CSS variable the default `:root` defines 
 
 Each `.s-<name>` swatch is a 2–4 stop linear gradient using the scheme's accent and semantic colors so the picker visually previews what the scheme looks like. Don't use the same gradient for every scheme — the swatches must be distinguishable at a glance.
 
-**4. Add the scheme JS**:
+**4. Add the scheme JS with persistence**:
 
 ```javascript
 function setScheme(name) {
@@ -188,7 +202,13 @@ function setScheme(name) {
   document.querySelectorAll('.scheme-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.scheme === name);
   });
+  try { localStorage.setItem('animScheme', name); } catch(e){}
 }
+// Sync the active swatch if scheme was restored from localStorage on load:
+const initialScheme = document.documentElement.getAttribute('data-scheme') || 'default';
+document.querySelectorAll('.scheme-btn').forEach(b => {
+  b.classList.toggle('active', b.dataset.scheme === initialScheme);
+});
 document.getElementById('schemePicker').addEventListener('click', (e) => {
   const btn = e.target.closest('.scheme-btn');
   if (btn) setScheme(btn.dataset.scheme);
@@ -196,6 +216,21 @@ document.getElementById('schemePicker').addEventListener('click', (e) => {
 ```
 
 If iframe embedding is relevant, extend the existing `postMessage` listener to handle `e.data.scheme` by calling `setScheme(e.data.scheme)`.
+
+**5. Add (or extend) the early-load restore script** in `<head>`, **before** `<style>`. This is required so Reset (which calls `location.reload()`) preserves the chosen scheme. If the **Multiple themes** subsection's restore script is already present, merge them — one script handles both keys:
+
+```html
+<script>
+  try {
+    var t = localStorage.getItem('animTheme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+    var s = localStorage.getItem('animScheme');
+    if (s && s !== 'default') document.documentElement.setAttribute('data-scheme', s);
+  } catch(e){}
+</script>
+```
+
+Placing the script before `<style>` ensures attributes are set before CSS evaluates, so there's no flash on reload.
 
 **Note on `h2v` export:** `h2v` operates on the `data-theme` axis (via `h2v-themes`), not `data-scheme`. The recording uses whichever scheme is active at page load — i.e. the default scheme. Recording a non-default scheme requires manually setting `data-scheme` on `<html>` before export, or extending the page's load script to read a query param. This is out of scope for the default integration.
 
@@ -323,7 +358,7 @@ Every animation is a single self-contained HTML file:
 </html>
 ```
 
-When the user requests multiple themes, add the toggle button, `toggleTheme()` function, and `postMessage` listener as shown in the **Multiple themes** subsection above, and add an `h2v-themes` meta listing every supported theme. When the user requests multiple color schemes (palette families distinct from light/dark), add the picker UI shown in the **Color schemes** subsection.
+When the user requests multiple themes, add the toggle button, `toggleTheme()` function, `postMessage` listener, an `h2v-themes` meta listing every supported theme, and the early-load restore script in `<head>` — all as shown in the **Multiple themes** subsection above. When the user requests multiple color schemes (palette families distinct from light/dark), add the picker UI and persistence script as shown in the **Color schemes** subsection. The restore script is what makes Reset preserve the chosen theme/scheme; without it, `location.reload()` reverts to defaults.
 
 ### Controls bar CSS
 
