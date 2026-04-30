@@ -26,7 +26,7 @@ A strong palette has:
 - Semantic colors: success (green), warning (amber), error (red)
 - Muted text color with sufficient contrast
 
-Always support light and dark themes via `[data-theme="light"]` on `<html>`:
+Define a single palette using CSS variables and pick a tone (dark, light, or neutral) that matches the mood. The example below is a cinematic dark-toned starting point — adapt or replace it based on the request. Add a *theme system* (multiple palettes the viewer can switch between) only when the user explicitly asks; see the **Multiple themes** subsection below.
 
 ```css
 :root {
@@ -48,7 +48,17 @@ Always support light and dark themes via `[data-theme="light"]` on `<html>`:
   --red-dim: #f8717122;
   --shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
+```
 
+Adapt the accent color to the project context if one is provided. The palette above is a sensible default.
+
+### Multiple themes
+
+Add multiple themes only when the user requests them ("with a light mode", "support both themes", "add a light theme toggle", etc.). To support multiple themes, four things change:
+
+**1. Add a palette block per additional theme** keyed off `[data-theme="<name>"]`. Example light palette:
+
+```css
 [data-theme="light"] {
   --bg: #f2f2f2;
   --surface: #ffffff;
@@ -70,7 +80,124 @@ Always support light and dark themes via `[data-theme="light"]` on `<html>`:
 }
 ```
 
-Adapt the accent color to the project context if one is provided. The palette above is a sensible default.
+The first theme listed in the meta tag below is the default (no attribute on `<html>`); other themes apply when `data-theme="<name>"` is set on `<html>`.
+
+**2. Add an `h2v-themes` meta** to `<head>` listing every supported theme (it's not in the default template):
+
+```html
+<meta name="h2v-themes" content="dark,light">
+```
+
+**3. Add a theme toggle button** to the controls bar:
+
+```html
+<button class="ctrl-btn" id="themeBtn" onclick="toggleTheme()">☀ Light</button>
+```
+
+**4. Add the toggle function and an iframe-friendly postMessage listener**:
+
+```javascript
+function toggleTheme() {
+  const l = document.documentElement.getAttribute('data-theme') === 'light';
+  document.documentElement.setAttribute('data-theme', l ? 'dark' : 'light');
+  document.getElementById('themeBtn').textContent = l ? '☀ Light' : '🌙 Dark';
+}
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.theme) document.documentElement.setAttribute('data-theme', e.data.theme);
+});
+```
+
+For more than two themes, generalize the toggle to cycle through the declared list rather than flipping a boolean.
+
+### Color schemes
+
+A *color scheme* is an alternative palette family the viewer can switch between (e.g. a brand palette, a vibrant variant, a corporate variant). Schemes are **orthogonal** to the dark/light theme axis: each scheme can have its own dark and light variants. They are opt-in — add them only when the user explicitly asks ("add palette options", "let me try different colors", "include a brand-color variant", "with multiple color schemes"). Do not add schemes by default.
+
+When schemes are present, the controls bar gets a *scheme picker* — small gradient swatches that visually preview each scheme. Four things change:
+
+**1. Define each scheme** keyed off `[data-scheme="<name>"]`. The default scheme uses bare `:root` (no scheme attribute). For each non-default scheme, add a `:root[data-scheme="<name>"]` block. If multi-theme is also enabled, add a matching `:root[data-theme="light"][data-scheme="<name>"]` block per scheme so each scheme works in both brightness modes:
+
+```css
+:root[data-scheme="brand"] {
+  --bg: #0f0f0f;
+  --accent: #056ff0;
+  /* ...full palette overriding every variable... */
+}
+:root[data-theme="light"][data-scheme="brand"] {
+  --bg: #f0f4f7;
+  --accent: #056ff0;
+  /* ...full palette... */
+}
+```
+
+Every scheme block must override every CSS variable the default `:root` defines — otherwise inherited values from the default leak through and the scheme looks broken.
+
+**2. Add the scheme-picker HTML** to the controls bar, before the Reset button:
+
+```html
+<div class="scheme-picker" id="schemePicker">
+  <button class="scheme-btn active" data-scheme="default" title="Default">
+    <span class="scheme-swatch s-default"></span>
+  </button>
+  <button class="scheme-btn" data-scheme="brand" title="Brand">
+    <span class="scheme-swatch s-brand"></span>
+  </button>
+  <!-- one button per scheme -->
+</div>
+```
+
+**3. Add the picker CSS**:
+
+```css
+.scheme-picker {
+  display: flex; gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px; padding: 4px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.scheme-btn {
+  width: 26px; height: 26px;
+  border-radius: 5px;
+  border: 1.5px solid transparent;
+  background: transparent; cursor: pointer; padding: 2px;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+.scheme-btn:hover { transform: scale(1.08); }
+.scheme-btn.active { border-color: var(--text); }
+.scheme-swatch {
+  display: block; width: 100%; height: 100%;
+  border-radius: 3px;
+}
+/* one .s-<name> per scheme — multi-stop gradient using the scheme's distinctive colors */
+.scheme-swatch.s-default { background: linear-gradient(135deg, #3b82f6 0%, #22c55e 60%, #f87171 100%); }
+.scheme-swatch.s-brand   { background: linear-gradient(135deg, #056ff0 0%, #4b2eff 100%); }
+```
+
+Each `.s-<name>` swatch is a 2–4 stop linear gradient using the scheme's accent and semantic colors so the picker visually previews what the scheme looks like. Don't use the same gradient for every scheme — the swatches must be distinguishable at a glance.
+
+**4. Add the scheme JS**:
+
+```javascript
+function setScheme(name) {
+  if (name === 'default') {
+    document.documentElement.removeAttribute('data-scheme');
+  } else {
+    document.documentElement.setAttribute('data-scheme', name);
+  }
+  document.querySelectorAll('.scheme-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.scheme === name);
+  });
+}
+document.getElementById('schemePicker').addEventListener('click', (e) => {
+  const btn = e.target.closest('.scheme-btn');
+  if (btn) setScheme(btn.dataset.scheme);
+});
+```
+
+If iframe embedding is relevant, extend the existing `postMessage` listener to handle `e.data.scheme` by calling `setScheme(e.data.scheme)`.
+
+**Note on `h2v` export:** `h2v` operates on the `data-theme` axis (via `h2v-themes`), not `data-scheme`. The recording uses whichever scheme is active at page load — i.e. the default scheme. Recording a non-default scheme requires manually setting `data-scheme` on `<html>` before export, or extending the page's load script to read a query param. This is out of scope for the default integration.
 
 ### Color semantics
 
@@ -173,10 +300,9 @@ Every animation is a single self-contained HTML file:
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="h2v-duration" content="Xs">
-  <meta name="h2v-themes" content="dark,light">
   <title>Descriptive title</title>
   <style>
-    /* :root palette (dark + light) */
+    /* :root palette */
     /* Reset */
     /* Body: centered flex, full viewport, var(--bg) */
     /* Controls bar */
@@ -186,26 +312,18 @@ Every animation is a single self-contained HTML file:
 <body>
   <div class="controls" data-h2v-hide>
     <button class="ctrl-btn" onclick="location.reload()">↺ Reset</button>
-    <button class="ctrl-btn" id="themeBtn" onclick="toggleTheme()">☀ Light</button>
   </div>
 
   <!-- Animation content -->
 
   <script>
-    function toggleTheme() {
-      const l = document.documentElement.getAttribute('data-theme') === 'light';
-      document.documentElement.setAttribute('data-theme', l ? 'dark' : 'light');
-      document.getElementById('themeBtn').textContent = l ? '☀ Light' : '🌙 Dark';
-    }
-    window.addEventListener('message', function(e) {
-      if (e.data && e.data.theme) document.documentElement.setAttribute('data-theme', e.data.theme);
-    });
-
     // Animation logic
   </script>
 </body>
 </html>
 ```
+
+When the user requests multiple themes, add the toggle button, `toggleTheme()` function, and `postMessage` listener as shown in the **Multiple themes** subsection above, and add an `h2v-themes` meta listing every supported theme. When the user requests multiple color schemes (palette families distinct from light/dark), add the picker UI shown in the **Color schemes** subsection.
 
 ### Controls bar CSS
 
@@ -223,7 +341,7 @@ Every animation is a single self-contained HTML file:
 .ctrl-btn:hover { color: var(--text); border-color: var(--border2); }
 ```
 
-Every animation includes the controls bar and theme toggle. The `postMessage` listener enables theme control from a parent page embedding the animation in an iframe.
+Every animation includes the controls bar with a Reset button. The theme toggle (and its `postMessage` iframe listener) is added only when the animation supports multiple themes — see the **Multiple themes** subsection. The scheme picker is added only when the animation supports multiple color schemes — see the **Color schemes** subsection.
 
 ## Video export
 
@@ -252,10 +370,11 @@ Don't install without confirmation — `npm install -g` mutates the user's globa
 
 ### h2v-ready by default
 
-Every animation produced by this skill is recordable with no flags because the file template declares both:
+Every animation produced by this skill is recordable with no flags because the file template declares its duration:
 
 - `<meta name="h2v-duration" content="Xs">` — total runtime including the final hold (e.g. last `setTimeout` target + 1–2s end hold = `8s`). This is `h2v`'s highest-priority duration source. If wrong, the recording will cut off mid-animation or include dead time at the end.
-- `<meta name="h2v-themes" content="dark,light">` — declares the themes the page supports. The first listed is the default (no attribute on `<html>`); for other passes `h2v` sets `data-theme="<name>"` on `<html>`, which matches the palette selectors. Match this list to whatever themes the animation actually defines.
+
+`h2v-themes` is **not** in the default template — themes are opt-in. When the animation declares multiple themes (see the **Multiple themes** subsection), it adds `<meta name="h2v-themes" content="...">` listing them. The first theme listed is the default (no `data-theme` attribute on `<html>`); for other passes `h2v` sets `data-theme="<name>"` to match the palette selectors. Without `h2v-themes`, `h2v` records the page as-is and `--theme` flags will error.
 
 The controls bar in the template has `data-h2v-hide`, so `h2v` automatically hides it during capture without any file edits.
 
@@ -320,7 +439,6 @@ Skip auto-open entirely if the request includes any of: "don't open", "just save
 - **No visual hierarchy.** Something must be the focal point. Size, color, and position establish what the viewer sees first.
 - **Hardcoded colors.** Every hex value is a CSS variable. No exceptions.
 - **Missing hover states.** Buttons need `:hover` feedback.
-- **Forgetting the theme toggle.** Every animation supports light and dark mode.
 
 ## Process
 
@@ -329,7 +447,7 @@ Skip auto-open entirely if the request includes any of: "don't open", "just save
 3. Plan the phases: what appears when, what changes, what resolves
 4. Write HTML structure → CSS styles → JS timing
 5. Walk through the animation mentally, second by second: does every moment have purpose? Is there dead time? Does anything compete for attention?
-6. Include controls bar and theme toggle
-7. Default to dark theme
+6. Include the controls bar (Reset only by default; theme toggle only when supporting multiple themes)
+7. Default to a single palette (no theme system, no scheme picker); add multiple themes or color schemes only when the user asks
 8. Set the `h2v-duration` meta tag to the total runtime (last animation event + end hold)
 9. Open the file for the user (single new file → auto-open; edits → tell them to refresh; multiple → ask)
