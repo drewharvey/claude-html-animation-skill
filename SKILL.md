@@ -286,6 +286,30 @@ If something should be hidden or styled differently *only* during capture (e.g. 
 html[data-h2v-recording] .debug-overlay { display: none; }
 ```
 
+## Previewing the output
+
+After producing an artifact — a new HTML animation file or an exported MP4 — open it for the user, with care so iteration doesn't spam duplicate browser tabs.
+
+### When to auto-open
+
+- **Single newly created file (HTML or MP4):** open it.
+- **Edit to an existing file:** do not re-open. The user almost certainly already has it open; just remind them to refresh.
+- **Multiple files in one run** (a bundle export, `--theme all` producing 2+ MP4s, a batch of HTML files): do not open any automatically. When the run finishes, ask the user with three options: *open all / open the first / none*. Yes/no is wrong here — six themes shouldn't mean six windows on a "yes."
+
+### How to open
+
+Use the platform-appropriate command:
+
+- macOS: `open <path>`
+- Linux: `xdg-open <path>`
+- Windows: `start <path>`
+
+If the command fails (headless session, no default app registered, SSH without a display), print the error message **and** the absolute path of the file so the user can open it manually. Do not swallow the failure silently — the user needs to know both that the auto-open didn't work and where the file actually is.
+
+### When the user opted out
+
+Skip auto-open entirely if the request includes any of: "don't open", "just save", "no preview", "skip preview". In those cases, print the file path(s) when done so the user can open them on their own terms.
+
 ## Common mistakes to avoid
 
 - **Too much text.** If you're writing a sentence, stop. Use a short label or nothing.
@@ -308,3 +332,4 @@ html[data-h2v-recording] .debug-overlay { display: none; }
 6. Include controls bar and theme toggle
 7. Default to dark theme
 8. Set the `h2v-duration` meta tag to the total runtime (last animation event + end hold)
+9. Open the file for the user (single new file → auto-open; edits → tell them to refresh; multiple → ask)
