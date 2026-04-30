@@ -17,36 +17,78 @@ When you ask Claude Code to create an animation — "animate a deployment sequen
 
 ## Install
 
+The skill's `name:` field is `html-animation`, so it must be installed at `~/.claude/skills/html-animation/` regardless of what this repo's directory is called.
+
 ### For personal use (all projects)
 
-```bash
-# Clone the repo
-git clone https://github.com/yourname/html-animation.git
+The simplest install — clone directly into your skills directory with the correct target name:
 
-# Symlink into your Claude Code skills directory
-ln -s "$(pwd)/html-animation" ~/.claude/skills/html-animation
+```bash
+git clone https://github.com/yourname/claude-html-animation-skill.git ~/.claude/skills/html-animation
+```
+
+If you want to edit the skill while it's installed, clone anywhere and symlink instead:
+
+```bash
+git clone https://github.com/yourname/claude-html-animation-skill.git
+ln -s "$(pwd)/claude-html-animation-skill" ~/.claude/skills/html-animation
 ```
 
 The symlink means edits to `SKILL.md` take effect immediately — Claude Code watches for file changes without needing a restart.
-
-Alternatively, copy instead of symlink:
-
-```bash
-cp -r html-animation ~/.claude/skills/html-animation
-```
 
 ### For a specific project
 
 Put the skill inside your project's `.claude/skills/` directory. Anyone who clones the repo gets the skill automatically:
 
 ```bash
-mkdir -p your-repo/.claude/skills
-cp -r html-animation your-repo/.claude/skills/html-animation
+mkdir -p your-repo/.claude/skills/html-animation
+cp SKILL.md your-repo/.claude/skills/html-animation/
 ```
 
-### For claude.ai (web interface)
+## Update
 
-Download the `html-animation.skill` file from the releases and upload it through **Customize > Skills > + Create skill** in the claude.ai interface.
+How you update depends on how you installed.
+
+**Symlinked install** — pull in your clone; the symlinked install picks up the new `SKILL.md` immediately:
+
+```bash
+cd /path/to/claude-html-animation-skill   # wherever you cloned
+git pull
+```
+
+**Direct clone into skills directory** — pull from inside the install location:
+
+```bash
+cd ~/.claude/skills/html-animation
+git pull
+```
+
+**Project-scoped install (copied `SKILL.md`)** — copy the updated file in and commit:
+
+```bash
+# from the cloned repo:
+cp SKILL.md /path/to/your-repo/.claude/skills/html-animation/
+```
+
+## Uninstall
+
+**Symlinked install** — remove the link only (your clone stays put):
+
+```bash
+rm ~/.claude/skills/html-animation
+```
+
+**Direct clone into skills directory** — delete the installed copy:
+
+```bash
+rm -rf ~/.claude/skills/html-animation
+```
+
+**Project-scoped install** — delete the skill directory from the project and commit so teammates' next pull removes it on their side too:
+
+```bash
+rm -rf your-repo/.claude/skills/html-animation
+```
 
 ## Verify it works
 
@@ -83,7 +125,7 @@ The `SKILL.md` instructs Claude on:
 ### File structure
 
 ```
-html-animation/
+claude-html-animation-skill/
 ├── SKILL.md       # The skill instructions (this is the only required file)
 └── README.md      # This file
 ```
@@ -130,30 +172,23 @@ If the skill triggers too often or not enough, edit the `description` field. Mak
 Push this repo and others install with:
 
 ```bash
-git clone https://github.com/yourname/html-animation.git ~/.claude/skills/html-animation
+git clone https://github.com/yourname/claude-html-animation-skill.git ~/.claude/skills/html-animation
 ```
 
 ### Zip file
 
-```bash
-zip -r html-animation.zip html-animation/
-```
-
-Share the zip. Recipients unzip into `~/.claude/skills/`:
+From the parent directory:
 
 ```bash
-unzip html-animation.zip -d ~/.claude/skills/
+zip -r claude-html-animation-skill.zip claude-html-animation-skill/
 ```
 
-### claude.ai upload
-
-Package as a `.skill` file (just a zip with a different extension):
+Recipients unzip and rename the directory to match the skill name:
 
 ```bash
-cd .. && zip -r html-animation.skill html-animation/
+unzip claude-html-animation-skill.zip
+mv claude-html-animation-skill ~/.claude/skills/html-animation
 ```
-
-Upload through the claude.ai web interface under **Customize > Skills**.
 
 ## Limitations
 
