@@ -172,6 +172,8 @@ Every animation is a single self-contained HTML file:
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="h2v-duration" content="Xs">
+  <meta name="h2v-themes" content="dark,light">
   <title>Descriptive title</title>
   <style>
     /* :root palette (dark + light) */
@@ -182,7 +184,7 @@ Every animation is a single self-contained HTML file:
   </style>
 </head>
 <body>
-  <div class="controls">
+  <div class="controls" data-h2v-hide>
     <button class="ctrl-btn" onclick="location.reload()">↺ Reset</button>
     <button class="ctrl-btn" id="themeBtn" onclick="toggleTheme()">☀ Light</button>
   </div>
@@ -223,6 +225,67 @@ Every animation is a single self-contained HTML file:
 
 Every animation includes the controls bar and theme toggle. The `postMessage` listener enables theme control from a parent page embedding the animation in an iframe.
 
+## Video export
+
+Animations from this skill can be rendered to MP4 with the `h2v` CLI. The project lives at https://github.com/drewharvey/html-to-video — do not re-fetch that README each time; this section captures the interface you need. (`h2v` is under active development; if a command here errors in a way that suggests the CLI surface has changed, *then* check the repo README and update this section.)
+
+**Conversion is slow — never run it as part of creating an animation.** Only invoke `h2v` when the user explicitly asks to export, render, save, or convert the animation to video/MP4. Phrases that should trigger an export run: "export to video", "render as mp4", "convert to video", "save as mp4", "make this a video", "record this animation". A request to "create an animation" by itself is **not** a request to export.
+
+### Before running: check it's installed
+
+`h2v` is not on npm yet; users install from source. Before the first export attempt in a session, check whether the CLI is on `$PATH`:
+
+```bash
+command -v h2v
+```
+
+If it's missing, tell the user `h2v` is required for video export and offer to install it. The install steps (Node 18+ and `ffmpeg` are prerequisites):
+
+```bash
+git clone https://github.com/drewharvey/html-to-video.git
+cd html-to-video
+npm install
+npm install -g .
+```
+
+Don't install without confirmation — `npm install -g` mutates the user's global environment.
+
+### h2v-ready by default
+
+Every animation produced by this skill is recordable with no flags because the file template declares both:
+
+- `<meta name="h2v-duration" content="Xs">` — total runtime including the final hold (e.g. last `setTimeout` target + 1–2s end hold = `8s`). This is `h2v`'s highest-priority duration source. If wrong, the recording will cut off mid-animation or include dead time at the end.
+- `<meta name="h2v-themes" content="dark,light">` — declares the themes the page supports. The first listed is the default (no attribute on `<html>`); for other passes `h2v` sets `data-theme="<name>"` on `<html>`, which matches the palette selectors. Match this list to whatever themes the animation actually defines.
+
+The controls bar in the template has `data-h2v-hide`, so `h2v` automatically hides it during capture without any file edits.
+
+### Running the export
+
+Only when the user asks:
+
+```bash
+h2v export path/to/animation.html
+```
+
+Common variants:
+
+- `h2v export --theme all file.html` — one MP4 per declared theme (e.g. `file-dark.mp4`, `file-light.mp4`)
+- `h2v export --theme light file.html` — single named theme (must be declared in the meta)
+- `h2v export --width 1920 --height 1080 file.html` — non-default viewport (default 1280×720)
+- `h2v export --duration 12s file.html` — override the meta tag (rarely needed)
+
+Default output is `./output/<basename>.mp4`. After the run, tell the user where the file landed.
+
+Wall-clock recording time is roughly `animation duration × slowdown` (default 10×), so an 8s animation takes ~80s to record. Don't poll or interrupt it.
+
+### Recording-only styling
+
+If something should be hidden or styled differently *only* during capture (e.g. a debug overlay, an FPS meter, a watermark you want for normal viewing but not the video), use `data-h2v-hide` on the element, or condition on the `data-h2v-recording` attribute that `h2v` sets on `<html>` during capture:
+
+```css
+html[data-h2v-recording] .debug-overlay { display: none; }
+```
+
 ## Common mistakes to avoid
 
 - **Too much text.** If you're writing a sentence, stop. Use a short label or nothing.
@@ -244,3 +307,4 @@ Every animation includes the controls bar and theme toggle. The `postMessage` li
 5. Walk through the animation mentally, second by second: does every moment have purpose? Is there dead time? Does anything compete for attention?
 6. Include controls bar and theme toggle
 7. Default to dark theme
+8. Set the `h2v-duration` meta tag to the total runtime (last animation event + end hold)

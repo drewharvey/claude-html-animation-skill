@@ -19,6 +19,14 @@ When you ask Claude Code to create an animation — "animate a deployment sequen
 
 The skill's `name:` field is `html-animation`, so it must be installed at `~/.claude/skills/html-animation/` regardless of what this repo's directory is called.
 
+These instructions assume macOS or Linux with a POSIX shell (zsh, bash). On Windows, use WSL or substitute the equivalent PowerShell commands (`New-Item -ItemType SymbolicLink`, etc.).
+
+If you've never installed a Claude Code skill before, the skills directory may not exist yet. Create it once:
+
+```bash
+mkdir -p ~/.claude/skills
+```
+
 ### For personal use (all projects)
 
 The simplest install — clone directly into your skills directory with the correct target name:
@@ -27,14 +35,23 @@ The simplest install — clone directly into your skills directory with the corr
 git clone https://github.com/yourname/claude-html-animation-skill.git ~/.claude/skills/html-animation
 ```
 
-If you want to edit the skill while it's installed, clone anywhere and symlink instead:
+If you want to edit the skill while it's installed, clone anywhere and symlink it into the skills directory. **The `cd` step matters** — without it, `$(pwd)` won't point at the cloned repo and the symlink will be broken:
 
 ```bash
 git clone https://github.com/yourname/claude-html-animation-skill.git
-ln -s "$(pwd)/claude-html-animation-skill" ~/.claude/skills/html-animation
+cd claude-html-animation-skill
+ln -s "$(pwd)" ~/.claude/skills/html-animation
 ```
 
-The symlink means edits to `SKILL.md` take effect immediately — Claude Code watches for file changes without needing a restart.
+If you'd rather use an absolute path (no `cd` required):
+
+```bash
+ln -s /absolute/path/to/claude-html-animation-skill ~/.claude/skills/html-animation
+```
+
+Either way, the symlink means edits to `SKILL.md` take effect immediately — Claude Code reads the file fresh each time the skill is invoked.
+
+To verify the symlink is good, run `ls -la ~/.claude/skills/html-animation/` — you should see `SKILL.md` listed. If you get "No such file or directory," the symlink is broken (it points at a path that doesn't exist); `rm` it and try again.
 
 ### For a specific project
 
@@ -44,6 +61,10 @@ Put the skill inside your project's `.claude/skills/` directory. Anyone who clon
 mkdir -p your-repo/.claude/skills/html-animation
 cp SKILL.md your-repo/.claude/skills/html-animation/
 ```
+
+### After installing
+
+**Start a new Claude Code session.** Skills are registered when a session starts — an existing session won't pick up a new install. Once registered, edits to `SKILL.md` take effect on the next skill invocation without needing another restart.
 
 ## Update
 
