@@ -380,7 +380,7 @@ Common variants:
 
 Default output is `./output/<basename>.mp4`. After the run, tell the user where the file landed.
 
-Wall-clock recording time is roughly `animation duration × slowdown` (default 10×), so an 8s animation takes ~80s to record. Don't poll or interrupt it.
+Wall-clock recording time is roughly `animation duration × slowdown` (default 6×), so an 8s animation takes ~48s to record. Don't poll or interrupt it.
 
 ### Recording-only styling
 
