@@ -328,6 +328,19 @@ When the user asks for multiple themes (any palette variants — light/dark, bra
 
 Every animation includes the controls bar with a Reset button. The theme picker (and its `postMessage` iframe listener) is added only when the animation supports multiple themes — see the **Multiple themes** subsection.
 
+### Multi-animation runs
+
+A single request can produce multiple animations — e.g. *"create 5 animations for the launch sequence"*, *"make one animation per bullet point"*, *"animate each step of the onboarding flow"*. Each animation is its own self-contained HTML file (the per-file rules in this section still apply); the difference is just that one task produces several files.
+
+When producing multiple animations:
+
+- **Put them in a clean directory.** Either an existing one the user named, or a fresh one (`./animations/`, or named after the topic). Don't sprinkle them across the working directory.
+- **Use descriptive, distinct file names.** `server-grid.html`, `progress-stalls.html`, `auth-failure.html` — not `animation-1.html`, `animation-2.html`. The names show up in `h2v review`'s preview index and in MP4 filenames after export.
+- **Match style across the set.** Use the same palette, typography, surface conventions, and motion language across all animations in the run so they read as a coherent set rather than five different aesthetics. Carry any user-specified theme or palette through every file.
+- **Vary the animation, not the chrome.** The controls bar, layout container, and overall composition stay consistent; what changes between files is the actual visualization.
+
+After a multi-file run finishes, preview them together with `h2v review <directory>` (see *Previewing the output*). One page, all animations, theme toggle for the whole set.
+
 ## Video export
 
 Animations from this skill can be rendered to MP4 with the `h2v` CLI. The project lives at https://github.com/drewharvey/html-to-video — do not re-fetch that README each time; this section captures the interface you need. (`h2v` is under active development; if a command here errors in a way that suggests the CLI surface has changed, *then* check the repo README and update this section.)
@@ -396,9 +409,10 @@ After producing an artifact — a new HTML animation file or an exported MP4 —
 
 ### When to auto-open
 
-- **Single newly created file (HTML or MP4):** open it.
+- **Single newly created file (HTML or MP4):** open it directly.
 - **Edit to an existing file:** do not re-open. The user almost certainly already has it open; just remind them to refresh.
-- **Multiple files in one run** (a bundle export, `--theme all` producing 2+ MP4s, a batch of HTML files): do not open any automatically. When the run finishes, ask the user with three options: *open all / open the first / none*. Yes/no is wrong here — six themes shouldn't mean six windows on a "yes."
+- **Multiple HTML animations in one run** (e.g. user asked for "5 animations for X" or "one per bullet point", or `--theme all` producing 2+ HTML variants — though that's rare): use `h2v review <directory>` instead of opening N tabs. This produces a single preview page with every animation embedded as an iframe, plus reload/replay controls and a theme toggle. One window, all animations.
+- **Multiple MP4 exports in one run** (e.g. `h2v export --theme all` producing 2+ MP4s, or batched exports): `h2v review` does not yet support video files (support is coming). For now, fall back to asking the user with three options: *open all / open the first / none*. Yes/no is wrong here — six themes shouldn't mean six windows on a "yes."
 
 ### How to open
 
@@ -408,7 +422,9 @@ Use the platform-appropriate command:
 - Linux: `xdg-open <path>`
 - Windows: `start <path>`
 
-If the command fails (headless session, no default app registered, SSH without a display), print the error message **and** the absolute path of the file so the user can open it manually. Do not swallow the failure silently — the user needs to know both that the auto-open didn't work and where the file actually is.
+For a multi-animation HTML directory, prefer `h2v review <directory>` (it handles its own browser launch). If `h2v review` errors or `h2v` isn't installed, fall back to the platform command on the directory or the first file.
+
+If any open command fails (headless session, no default app registered, SSH without a display), print the error message **and** the absolute path of the file so the user can open it manually. Do not swallow the failure silently — the user needs to know both that the auto-open didn't work and where the file actually is.
 
 ### When the user opted out
 
