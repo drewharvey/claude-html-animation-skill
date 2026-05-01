@@ -390,10 +390,13 @@ Common variants:
 - `h2v export --theme navy file.html` — single named theme (must be declared in the `h2v-themes` meta)
 - `h2v export --width 1920 --height 1080 file.html` — non-default viewport (default 1280×720)
 - `h2v export --duration 12s file.html` — override the meta tag (rarely needed)
+- `h2v export --concurrency 2 --theme all file.html` — render passes in parallel (see below)
 
 Default output is `./output/<basename>.mp4`. After the run, tell the user where the file landed.
 
 Wall-clock recording time is roughly `animation duration × slowdown` (default 6×), so an 8s animation takes ~48s to record. Don't poll or interrupt it.
+
+For multi-job runs (`--theme all` with 2+ themes, or `h2v export <file1> <file2> …`), pass `--concurrency <N>` to record N jobs in parallel. Each worker is a separate browser process using ~300–500 MB at the default 4K scale, so keep `N` to about half the user's available RAM in GB (e.g. `--concurrency 4` on a 16 GB machine). Single-job runs ignore concurrency.
 
 ### Recording-only styling
 
