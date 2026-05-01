@@ -1,6 +1,10 @@
 # html-animation
 
-A Claude Code skill that produces high-quality, self-contained HTML/CSS/JS animations. Install it once and it triggers automatically whenever you ask Claude to create an animation, motion graphic, or animated visualization.
+A Claude Code skill that does two things: it gets Claude to produce high-quality, self-contained HTML/CSS/JS animations, and it lets you export those animations as MP4 videos. Install it once and it triggers automatically whenever you ask Claude to create an animation, motion graphic, or animated visualization.
+
+The HTML output is the iteration surface — standalone files you preview and refine in a browser. Video export is handled by the [html-to-video](https://github.com/drewharvey/html-to-video) CLI (`h2v`), which the skill knows how to drive. Every animation it produces ships `h2v`-ready, with the duration and theme metadata the renderer needs baked in, so exporting is a one-line ask.
+
+The normal loop: ask Claude to create an animation (or a batch of them), iterate in the browser until they look right, then ask Claude to export the finals as video.
 
 ## What it does
 
