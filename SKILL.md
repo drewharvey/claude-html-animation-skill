@@ -394,6 +394,8 @@ Only when the user asks:
 h2v export path/to/animation.html
 ```
 
+**Bundle input.** If the file already contains `<!-- ===== ANIMATION_START id="..." capture_duration="..." ===== -->` markers, it's an h2v *bundle* — pass it directly to `h2v export <bundle.html>`. h2v auto-detects bundles, gives each animation its own browser context, and writes one video per `id` to `output/<bundle-base>/<id>.<ext>`. **Don't split a bundle into separate files first**; that just reproduces what h2v does internally and burns tokens without changing the output. This applies only to bundles arriving from upstream (a chat artifact, a downloaded file). When *generating* a multi-animation set yourself, continue producing individual files in a directory per the **Multi-animation runs** section.
+
 Common variants:
 
 - `h2v export --theme all file.html` — one MP4 per declared theme (e.g. `file-vibrant.mp4`, `file-navy.mp4`, `file-vaadin.mp4`, or `file-dark.mp4`/`file-light.mp4`)
