@@ -382,6 +382,8 @@ Every animation produced by this skill is recordable with no flags because the f
 
 `h2v-themes` is **not** in the default template — themes are opt-in. When the animation declares multiple themes (see the **Multiple themes** subsection), it adds `<meta name="h2v-themes" content="...">` listing them. The first theme listed is the default (no `data-theme` attribute on `<html>`); for other passes `h2v` sets `data-theme="<name>"` to match the palette selectors. Without `h2v-themes`, `h2v` records the page as-is and `--theme` flags will error.
 
+`h2v-viewport` is also opt-in — without it, `h2v` defaults to 1280×720 (16:9 landscape), which is the assumed aspect for this skill. When the user asks for a non-default aspect (portrait reels, square social posts, full-HD masters), add `<meta name="h2v-viewport" content="WxH">` to the `<head>` and design the animation's CSS to fit. Common values: `1280x720` (default 16:9), `1080x1080` (1:1 square), `720x1280` (9:16 portrait), `1920x1080` (1080p 16:9). The format is `<width>x<height>` in CSS pixels — integers, no units, no spaces. `h2v` honors this for both `export` (per-animation recording size) and `review` (per-iframe sizing on the preview page).
+
 The controls bar in the template has `data-h2v-hide`, so `h2v` automatically hides it during capture without any file edits.
 
 ### Running the export
