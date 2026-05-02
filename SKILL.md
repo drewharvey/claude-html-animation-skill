@@ -91,17 +91,17 @@ Every non-default theme block must override every CSS variable the default `:roo
 
 The first listed is the default (no `data-theme` attribute on `<html>`). For other themes, both the picker and `h2v` set `data-theme="<name>"` on `<html>`. With this meta in place, `h2v export --theme all <file>` produces one MP4 per theme.
 
-**3. Add the theme-picker HTML** to the controls bar, before the Reset button. One button per theme — order must match the `h2v-themes` order, with the first button initially `active`:
+**3. Add the theme-picker HTML** to the controls bar, before the Reset button. One button per theme — order must match the `h2v-themes` order, with the first button initially `aria-pressed="true"` and the rest `aria-pressed="false"`:
 
 ```html
 <div class="theme-picker" id="themePicker">
-  <button class="theme-btn active" data-theme-name="vibrant" title="Vibrant">
+  <button class="theme-btn" data-theme-name="vibrant" aria-pressed="true" title="Vibrant">
     <span class="theme-swatch s-vibrant"></span>
   </button>
-  <button class="theme-btn" data-theme-name="navy" title="Navy">
+  <button class="theme-btn" data-theme-name="navy" aria-pressed="false" title="Navy">
     <span class="theme-swatch s-navy"></span>
   </button>
-  <button class="theme-btn" data-theme-name="vaadin" title="Vaadin">
+  <button class="theme-btn" data-theme-name="vaadin" aria-pressed="false" title="Vaadin">
     <span class="theme-swatch s-vaadin"></span>
   </button>
 </div>
@@ -125,7 +125,7 @@ The first listed is the default (no `data-theme` attribute on `<html>`). For oth
   transition: border-color 0.2s ease, transform 0.15s ease;
 }
 .theme-btn:hover { transform: scale(1.08); }
-.theme-btn.active { border-color: var(--text); }
+.theme-btn[aria-pressed="true"] { border-color: var(--text); }
 .theme-swatch {
   display: block; width: 100%; height: 100%;
   border-radius: 3px;
@@ -140,35 +140,35 @@ Each `.s-<name>` swatch is a 2–4 stop linear gradient using that theme's accen
 
 For light/dark themes specifically, use evocative gradients (e.g. `s-dark` = dark gray to near-black; `s-light` = white to light gray) rather than shoehorning a sun/moon icon into a swatch.
 
-**5. Add the picker JS with persistence**:
+**5. Add the picker JS with persistence**. Use `sessionStorage` (key `h2v-theme`) — h2v's canonical storage backend, so each recording worker spawns with a clean slate while in-page Reset still preserves the user's selection:
 
 ```javascript
 const themeMeta = document.querySelector('meta[name="h2v-themes"]')?.content || '';
 const defaultTheme = (themeMeta.split(',')[0] || '').trim();
 
-function setTheme(name) {
-  if (name === defaultTheme) {
+function applyTheme(target) {
+  if (target === defaultTheme) {
     document.documentElement.removeAttribute('data-theme');
-    try { localStorage.removeItem('animTheme'); } catch(e){}
+    try { sessionStorage.removeItem('h2v-theme'); } catch(e){}
   } else {
-    document.documentElement.setAttribute('data-theme', name);
-    try { localStorage.setItem('animTheme', name); } catch(e){}
+    document.documentElement.setAttribute('data-theme', target);
+    try { sessionStorage.setItem('h2v-theme', target); } catch(e){}
   }
   document.querySelectorAll('.theme-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.themeName === name);
+    b.setAttribute('aria-pressed', b.dataset.themeName === target ? 'true' : 'false');
   });
 }
-// Sync the active swatch if a theme was restored from localStorage on load:
+// Sync aria-pressed if a theme was restored from sessionStorage on load:
 const initialTheme = document.documentElement.getAttribute('data-theme') || defaultTheme;
 document.querySelectorAll('.theme-btn').forEach(b => {
-  b.classList.toggle('active', b.dataset.themeName === initialTheme);
+  b.setAttribute('aria-pressed', b.dataset.themeName === initialTheme ? 'true' : 'false');
 });
 document.getElementById('themePicker').addEventListener('click', (e) => {
   const btn = e.target.closest('.theme-btn');
-  if (btn) setTheme(btn.dataset.themeName);
+  if (btn) applyTheme(btn.dataset.themeName);
 });
 window.addEventListener('message', function(e) {
-  if (e.data && e.data.theme) setTheme(e.data.theme);
+  if (e.data && e.data.theme) applyTheme(e.data.theme);
 });
 ```
 
@@ -178,11 +178,19 @@ The default theme having no attribute (matching `h2v`'s convention) is essential
 
 ```html
 <script>
-  try { var t = localStorage.getItem('animTheme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){}
+  try { var t = sessionStorage.getItem('h2v-theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch(e){}
 </script>
 ```
 
-The script doesn't apply anything when no key is stored, which is correct: the unset state is the default theme.
+The script doesn't apply anything when no key is stored, which is correct: the unset state is the default theme. h2v's recording workers spawn with empty `sessionStorage`, so the head script is a no-op during export and h2v's own `setAttribute('data-theme', …)` wins.
+
+**7. Disable theme transitions during recording**. If `body` (or any `[data-theme]` selector) carries a CSS transition on `background` / `color`, h2v will capture the theme fading in from the default over the first few frames. Add this guard in the `<style>` block to suppress transitions only while h2v is recording:
+
+```css
+html[data-h2v-recording] body { transition: none; }
+```
+
+Skip only if you're certain no themed element transitions on color/background. The guard is harmless when there's nothing to suppress.
 
 ### Color semantics
 
