@@ -74,9 +74,9 @@ Six things change:
   --accent: #ffc300;
   /* ...full palette overriding every variable... */
 }
-:root[data-theme="vaadin"] {
+:root[data-theme="google"] {
   --bg: #0f0f0f;
-  --accent: #056ff0;
+  --accent: #4285f4;
   /* ...full palette... */
 }
 ```
@@ -86,7 +86,7 @@ Every non-default theme block must override every CSS variable the default `:roo
 **2. Add an `h2v-themes` meta** to `<head>` listing every supported theme, **default first**:
 
 ```html
-<meta name="h2v-themes" content="vibrant,navy,vaadin">
+<meta name="h2v-themes" content="vibrant,navy,google">
 ```
 
 The first listed is the default (no `data-theme` attribute on `<html>`). For other themes, both the picker and `h2v` set `data-theme="<name>"` on `<html>`. With this meta in place, `h2v export --theme all <file>` produces one MP4 per theme.
@@ -101,8 +101,8 @@ The first listed is the default (no `data-theme` attribute on `<html>`). For oth
   <button class="theme-btn" data-theme-name="navy" aria-pressed="false" title="Navy">
     <span class="theme-swatch s-navy"></span>
   </button>
-  <button class="theme-btn" data-theme-name="vaadin" aria-pressed="false" title="Vaadin">
-    <span class="theme-swatch s-vaadin"></span>
+  <button class="theme-btn" data-theme-name="google" aria-pressed="false" title="Google">
+    <span class="theme-swatch s-google"></span>
   </button>
 </div>
 ```
@@ -133,7 +133,7 @@ The first listed is the default (no `data-theme` attribute on `<html>`). For oth
 /* one .s-<name> per theme — multi-stop gradient using the theme's distinctive colors */
 .theme-swatch.s-vibrant { background: linear-gradient(135deg, #3a86ff 0%, #8338ec 35%, #ff006e 65%, #ffbe0b 100%); }
 .theme-swatch.s-navy    { background: linear-gradient(135deg, #001d3d 0%, #003566 50%, #ffc300 100%); }
-.theme-swatch.s-vaadin  { background: linear-gradient(135deg, #056ff0 0%, #4b2eff 100%); }
+.theme-swatch.s-google  { background: linear-gradient(135deg, #4285f4 0%, #ea4335 100%); }
 ```
 
 Each `.s-<name>` swatch is a 2–4 stop linear gradient using that theme's accent and semantic colors so the picker visually previews each theme. Don't reuse gradients — swatches must be distinguishable at a glance. Hardcoding hex values in swatches is a deliberate exception to "Never hardcode colors" — swatches must render consistently regardless of the active theme.
@@ -316,7 +316,7 @@ Every animation is a single self-contained HTML file:
 </html>
 ```
 
-When the user asks for multiple themes (any palette variants — light/dark, brand palettes, vibrant/navy/vaadin, etc.), add the picker UI, picker JS, palette blocks, `h2v-themes` meta, and early-load restore script — all as shown in the **Multiple themes** subsection above. The restore script is what makes Reset preserve the chosen theme; without it, `location.reload()` reverts to default.
+When the user asks for multiple themes (any palette variants — light/dark, brand palettes, vibrant/navy/microsoft, etc.), add the picker UI, picker JS, palette blocks, `h2v-themes` meta, and early-load restore script — all as shown in the **Multiple themes** subsection above. The restore script is what makes Reset preserve the chosen theme; without it, `location.reload()` reverts to default.
 
 ### Controls bar CSS
 
@@ -398,7 +398,7 @@ h2v export path/to/animation.html
 
 Common variants:
 
-- `h2v export --theme all file.html` — one MP4 per declared theme (e.g. `file-vibrant.mp4`, `file-navy.mp4`, `file-vaadin.mp4`, or `file-dark.mp4`/`file-light.mp4`)
+- `h2v export --theme all file.html` — one MP4 per declared theme (e.g. `file-vibrant.mp4`, `file-navy.mp4`, `file-google.mp4`, or `file-dark.mp4`/`file-light.mp4`)
 - `h2v export --theme navy file.html` — single named theme (must be declared in the `h2v-themes` meta)
 - `h2v export --width 1920 --height 1080 file.html` — non-default viewport (default 1280×720)
 - `h2v export --duration 12s file.html` — override the meta tag (rarely needed)
