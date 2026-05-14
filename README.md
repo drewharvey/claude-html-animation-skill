@@ -36,13 +36,13 @@ mkdir -p ~/.claude/skills
 The simplest install — clone directly into your skills directory with the correct target name:
 
 ```bash
-git clone https://github.com/yourname/claude-html-animation-skill.git ~/.claude/skills/html-animation
+git clone https://github.com/drewharvey/claude-html-animation-skill.git ~/.claude/skills/html-animation
 ```
 
 If you want to edit the skill while it's installed, clone anywhere and symlink it into the skills directory. **The `cd` step matters** — without it, `$(pwd)` won't point at the cloned repo and the symlink will be broken:
 
 ```bash
-git clone https://github.com/yourname/claude-html-animation-skill.git
+git clone https://github.com/drewharvey/claude-html-animation-skill.git
 cd claude-html-animation-skill
 ln -s "$(pwd)" ~/.claude/skills/html-animation
 ```
@@ -151,9 +151,13 @@ The `SKILL.md` instructs Claude on:
 
 ```
 claude-html-animation-skill/
-├── SKILL.md       # The skill instructions (this is the only required file)
-└── README.md      # This file
+├── SKILL.md       # The skill instructions (the only file required at install)
+├── README.md      # This file
+├── CLAUDE.md      # Notes for editing this repo with Claude Code (sync audits, conventions)
+└── LICENSE        # MIT
 ```
+
+Only `SKILL.md` ends up at `~/.claude/skills/html-animation/` when installed — the rest is repo-level material for people working on the skill.
 
 ### Editing the skill
 
@@ -190,19 +194,21 @@ The skill's `description` field in the YAML frontmatter controls when Claude act
 
 If the skill triggers too often or not enough, edit the `description` field. Making it more specific narrows triggering; making it broader widens it.
 
-## Sharing
+## Forking and sharing your own version
+
+If you fork this skill, modify it, and want others to install your version instead of the upstream, point them at your fork.
 
 ### GitHub
 
-Push this repo and others install with:
+Push your fork, then share the install command — substitute your GitHub username for `<your-username>`:
 
 ```bash
-git clone https://github.com/yourname/claude-html-animation-skill.git ~/.claude/skills/html-animation
+git clone https://github.com/<your-username>/claude-html-animation-skill.git ~/.claude/skills/html-animation
 ```
 
 ### Zip file
 
-From the parent directory:
+For distributing offline or outside GitHub. From the parent directory:
 
 ```bash
 zip -r claude-html-animation-skill.zip claude-html-animation-skill/
