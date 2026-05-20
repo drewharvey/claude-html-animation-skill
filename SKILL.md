@@ -453,6 +453,16 @@ Alpha + codec variations, only when the prompt asks:
 - `h2v export --alpha --codec prores_ks file.html` — ProRes 4444 with alpha (10-bit 4:4:4, larger files). Use when the prompt mentions both "ProRes" and alpha/transparency.
 - `h2v export --alpha --codec png file.html` — PNG-in-MOV (bit-exact lossless, smallest files). A reasonable option if asked, but mention that some NLEs (CapCut in particular) don't handle PNG-in-MOV reliably at 4K — `qtrle` is the safer default if the target tool is unknown.
 
+### Other codecs
+
+Records use h2v's default codec (libx264 / MP4). Switch only when the prompt explicitly names a different codec or container:
+
+- "ProRes" → `--codec prores_ks` (ProRes HQ in `.mov`). For ProRes 4444 specifically, use `--quality-preset max`. For ProRes 4444 with alpha, see Alpha export above.
+- "h265" / "HEVC" → `--codec libx265` (smaller files than h264 at the same perceptual quality; h2v tags the output for Safari/QuickTime compatibility)
+- "WebM" / "VP9" → `--codec libvpx-vp9` (web delivery without h264 licensing)
+
+For anything more exotic — custom container pairing, fine-grained encoder tuning — defer to https://github.com/drewharvey/html-to-video rather than guessing.
+
 ### Recording-only styling
 
 If something should be hidden or styled differently *only* during capture (e.g. a debug overlay, an FPS meter, a watermark you want for normal viewing but not the video), use `data-h2v-hide` on the element, or condition on the `data-h2v-recording` attribute that `h2v` sets on `<html>` during capture:
