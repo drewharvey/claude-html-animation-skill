@@ -410,6 +410,16 @@ Wall-clock recording time is roughly `animation duration × slowdown` (default 6
 
 For multi-job runs (`--theme all` with 2+ themes, or `h2v export <file1> <file2> …`), pass `--concurrency <N>` to record N jobs in parallel. Each worker is a separate browser process holding a full Chromium plus the 4K capture buffer — a few hundred MB per worker in practice — so memory scales linearly with N. Upstream's example uses `--concurrency 8`, which is a reasonable starting point on a typical dev machine; reduce if memory-constrained, raise toward CPU core count on larger boxes. Single-job runs ignore the flag.
 
+### Quality presets
+
+h2v's default preset (`standard`) is already visually lossless h264 at 4K and plays everywhere — it's the right export for the vast majority of requests, *including* prompts that say "high quality", "high fidelity", or "visually lossless". Don't reach for `--quality-preset` unless the prompt clearly maps to one of the non-default tiers below.
+
+- **`draft`** — `h2v export --quality-preset draft file.html`. Triggers: "draft", "quick render", "for review", "fast iteration", "preview render", "rough cut", "as fast as possible". Encode is ~3–4× faster and files are 5–8× smaller, with a visible quality drop. Useful when iterating on motion timing and the final fidelity doesn't matter yet.
+- **`max`** — `h2v export --quality-preset max file.html`. Triggers: "maximum quality", "archival", "best possible", "lossless master", "ProRes 4444", "highest quality". Writes ProRes 4444 in `.mov` (not `.mp4`); files are ~10× larger than the default and encode is slow. Surface those tradeoffs when offering it.
+- **`high`** — only when the user explicitly names the preset itself ("use the high preset", "`--quality-preset high`"). For plain "high quality" requests, the default `standard` preset gives equivalent perceptual quality with much better compatibility — use it instead. When `high` is genuinely requested, tell the user it encodes in yuv444p chroma, which doesn't decode on Safari or most hardware video decoders; it's a niche distribution-grade format, not a general "make it sharper" knob.
+
+For tuning beyond the presets (custom `--crf`, `--scale`, `--capture-quality`, container overrides), check the upstream docs at https://github.com/drewharvey/html-to-video rather than guessing.
+
 ### Recording-only styling
 
 If something should be hidden or styled differently *only* during capture (e.g. a debug overlay, an FPS meter, a watermark you want for normal viewing but not the video), use `data-h2v-hide` on the element, or condition on the `data-h2v-recording` attribute that `h2v` sets on `<html>` during capture:
