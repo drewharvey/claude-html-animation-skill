@@ -420,6 +420,39 @@ h2v's default preset (`standard`) is already visually lossless h264 at 4K and pl
 
 For tuning beyond the presets (custom `--crf`, `--scale`, `--capture-quality`, container overrides), check the upstream docs at https://github.com/drewharvey/html-to-video rather than guessing.
 
+### Alpha export
+
+Recording with a transparent background is a common need when the animation is destined for a non-linear editor (After Effects, Premiere, Resolve, CapCut) to be composited over other footage. Trigger alpha export when the prompt mentions: "transparent background", "with alpha", "alpha channel", "transparent video", "transparent .mov", "for overlay", "for compositing", "drop into [NLE]", or names an NLE workflow (e.g. "for After Effects").
+
+**Authoring requirement.** `--alpha` only produces a usable transparent video if the page itself doesn't paint an opaque background. The default template in this skill puts `var(--bg)` on `body`, which would bake into the alpha capture as a solid color. For alpha-bound animations, move the visible background onto a child element that's hidden during recording:
+
+```html
+<body>
+  <div class="bg" data-h2v-hide></div>
+  <!-- animation content -->
+</body>
+```
+
+```css
+body { background: transparent; }
+.bg { position: fixed; inset: 0; background: var(--bg); z-index: -1; }
+```
+
+In the browser the `.bg` layer paints normally; during capture `data-h2v-hide` strips it and the body is transparent. If alpha intent is signaled in the original creation prompt, author the animation this way from the start. If alpha export comes up later for an animation that already paints the body opaquely, edit the HTML before running the export.
+
+**Export command:**
+
+```bash
+h2v export --alpha file.html
+```
+
+Output extension is `.mov`, not `.mp4`. Defaults — `--codec qtrle` (lossless QuickTime Animation) and `--alpha-mode premultiplied` — are the right choice for CapCut, Resolve, Premiere, and After Effects. Only set `--alpha-mode straight` if the user explicitly names a tool that requires it (rare).
+
+Alpha + codec variations, only when the prompt asks:
+
+- `h2v export --alpha --codec prores_ks file.html` — ProRes 4444 with alpha (10-bit 4:4:4, larger files). Use when the prompt mentions both "ProRes" and alpha/transparency.
+- `h2v export --alpha --codec png file.html` — PNG-in-MOV (bit-exact lossless, smallest files). A reasonable option if asked, but mention that some NLEs (CapCut in particular) don't handle PNG-in-MOV reliably at 4K — `qtrle` is the safer default if the target tool is unknown.
+
 ### Recording-only styling
 
 If something should be hidden or styled differently *only* during capture (e.g. a debug overlay, an FPS meter, a watermark you want for normal viewing but not the video), use `data-h2v-hide` on the element, or condition on the `data-h2v-recording` attribute that `h2v` sets on `<html>` during capture:
