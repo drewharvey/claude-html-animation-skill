@@ -408,7 +408,7 @@ Default output is `./output/<basename>.mp4`. After the run, tell the user where 
 
 Wall-clock recording time is roughly `animation duration × slowdown` (default 6×), so an 8s animation takes ~48s to record. Don't poll or interrupt it.
 
-For multi-job runs (`--theme all` with 2+ themes, or `h2v export <file1> <file2> …`), pass `--concurrency <N>` to record N jobs in parallel. Each worker is a separate browser process using ~300–500 MB at the default 4K scale. h2v's suggested `N`: ~3 on 8 GB, ~8 on 16 GB, ~12 on 32 GB+ (CPU cores cap parallelism past ~12). Single-job runs ignore concurrency.
+For multi-job runs (`--theme all` with 2+ themes, or `h2v export <file1> <file2> …`), pass `--concurrency <N>` to record N jobs in parallel. Each worker is a separate browser process holding a full Chromium plus the 4K capture buffer — a few hundred MB per worker in practice — so memory scales linearly with N. Upstream's example uses `--concurrency 8`, which is a reasonable starting point on a typical dev machine; reduce if memory-constrained, raise toward CPU core count on larger boxes. Single-job runs ignore the flag.
 
 ### Recording-only styling
 
