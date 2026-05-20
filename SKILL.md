@@ -398,7 +398,7 @@ h2v export path/to/animation.html
 
 Common variants:
 
-- `h2v export --theme all file.html` — one MP4 per declared theme (e.g. `file-vibrant.mp4`, `file-navy.mp4`, `file-google.mp4`, or `file-dark.mp4`/`file-light.mp4`)
+- `h2v export --theme all file.html` — one MP4 per declared theme. The first theme in `h2v-themes` is the default and writes with no suffix; the others get `-<name>`. For `themes="vibrant,navy,google"` the output is `file.mp4`, `file-navy.mp4`, `file-google.mp4`
 - `h2v export --theme navy file.html` — single named theme (must be declared in the `h2v-themes` meta)
 - `h2v export --width 1920 --height 1080 file.html` — non-default viewport (default 1280×720)
 - `h2v export --duration 12s file.html` — override the meta tag (rarely needed)
