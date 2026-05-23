@@ -347,7 +347,7 @@ When producing multiple animations:
 - **Match style across the set.** Use the same palette, typography, surface conventions, and motion language across all animations in the run so they read as a coherent set rather than five different aesthetics. Carry any user-specified theme or palette through every file.
 - **Vary the animation, not the chrome.** The controls bar, layout container, and overall composition stay consistent; what changes between files is the actual visualization.
 
-After a multi-file run finishes, preview them together with `h2v review <directory>` (see *Previewing the output*). One page, all animations, theme toggle for the whole set.
+After a multi-file run finishes, preview them together with `h2v review <directory>` (see *Previewing the output*). One page, all animations, theme toggle for the whole set. The preview stays in sync with the files on disk — edit an animation, save, refresh the existing page; don't re-run `h2v review` between iterations.
 
 ## Video export
 
@@ -479,7 +479,7 @@ After producing an artifact — a new HTML animation file or an exported MP4 —
 
 - **Single newly created file (HTML or MP4):** open it directly.
 - **Edit to an existing file:** do not re-open. The user almost certainly already has it open; just remind them to refresh.
-- **Multiple HTML animations in one run** (e.g. user asked for "5 animations for X" or "one per bullet point", or `--theme all` producing 2+ HTML variants — though that's rare): use `h2v review <directory>` instead of opening N tabs. This produces a single preview page with every animation embedded as an iframe, plus reload/replay controls and a theme toggle. One window, all animations.
+- **Multiple HTML animations in one run** (e.g. user asked for "5 animations for X" or "one per bullet point", or `--theme all` producing 2+ HTML variants — though that's rare): use `h2v review <directory>` instead of opening N tabs. This produces a single preview page with each animation in an iframe pointing at its source file on disk, plus reload/replay controls and a theme toggle. Because iframes load from disk, **edits to any animation appear on refresh — don't re-open or re-run `h2v review` to pick up changes; tell the user to refresh the existing page.** Exception: if the input is a bundle, animations inline as `srcdoc` and refresh won't help; re-run `h2v review <bundle>` after bundle edits.
 - **Multiple MP4 exports in one run** (e.g. `h2v export --theme all` producing 2+ MP4s, or batched exports): `h2v review` does not yet support video files (support is coming). For now, fall back to asking the user with three options: *open all / open the first / none*. Yes/no is wrong here — six themes shouldn't mean six windows on a "yes."
 
 ### How to open
@@ -491,6 +491,8 @@ Use the platform-appropriate command:
 - Windows: `start <path>`
 
 For a multi-animation HTML directory, prefer `h2v review <directory>` (it handles its own browser launch). If `h2v review` errors or `h2v` isn't installed, fall back to the platform command on the directory or the first file.
+
+When the user asks for a sharable or self-contained preview (e.g. "save the review", "send me a single file", hand-off to a teammate, archival), add `--out <path>`: `h2v review <directory> --out preview.html`. This switches the review page to *portable mode* — every animation is inlined as `srcdoc` so the saved file is fully self-contained. The tradeoff is that it becomes a frozen snapshot; subsequent edits to source files won't show up on refresh. Default (no `--out`) is live mode and the right choice for iteration.
 
 If any open command fails (headless session, no default app registered, SSH without a display), print the error message **and** the absolute path of the file so the user can open it manually. Do not swallow the failure silently — the user needs to know both that the auto-open didn't work and where the file actually is.
 
