@@ -20,7 +20,7 @@ Think through these decisions first:
 
 When an animation will be exported to video, h2v can record it two ways, and the choice changes how you author the file — so settle it before writing code. (For an animation that's only ever viewed in the browser, this is moot; author with the play-driver idiom below, which is simpler.)
 
-- **Play-driver (slowdown).** Author with the normal web idiom: CSS `@keyframes`, transitions, and `setTimeout` choreography — everything in **Motion standards** below. h2v records by slowing the page clock (`--slowdown`, default 6×) and sampling frames. Fast to author, and the browser does the easing for you. The tradeoff is timing fidelity: under load or parallel jobs the frame sampling can drift, judder, or drop frames, so exact timing sometimes needs `--slowdown 10 --concurrency 1` to come out clean.
+- **Play-driver (slowdown).** Author with the normal web idiom: CSS `@keyframes`, transitions, and `setTimeout` choreography — everything in **Motion standards** below. h2v records by slowing the page clock (`--slowdown`, default 6×) and sampling frames. Fast to author, and the browser does the easing for you. The tradeoff is timing fidelity: the result depends on the page's timers and clocks, and CPU contention (e.g. many parallel jobs) can make frame timing slightly less uniform. If a render comes out juddery, retry with a higher `--slowdown` or a lower `--concurrency`.
 - **Seek-driven.** Author the animation as a single deterministic `seek(ms)` function where every visual state is a pure function of the timestamp — see **Seek-driven authoring**. h2v detects `window.seek` and renders each output frame by calling it at that frame's exact time. This is the same model Remotion and other frame-rendering tools use: render a given frame from its timestamp rather than playing a clock. Frame-perfect by construction, immune to machine load, and safe at high `--concurrency`. The cost is on the authoring side: no `@keyframes` / `setTimeout` / transitions on the animated content — you interpolate every motion by hand.
 
 Same visual ceiling either way. Seek's advantage is timing fidelity in the final video; play-driver's is authoring speed.
@@ -306,7 +306,7 @@ Always comment the phase structure.
 
 Use this **only** when the animation is authored for the seek driver (see **Recording method**). For play-driver, use **Motion standards** above instead.
 
-The entire animation is one pure function of time. Expose `window.seek(ms)` that puts every animated element into its exact state for timestamp `ms`. h2v calls it once per output frame, and the same `ms` must always produce identical pixels.
+The entire animation is one pure function of time. Expose `window.seek(ms)` that puts every animated element into its exact state for timestamp `ms`. h2v calls it once per output frame — possibly out of order, with the frame range split across several browsers — so it must be safe to call in any order, any number of times, and the same `ms` must always produce identical pixels.
 
 **Hard rules** — these break determinism and are banned on animated content:
 
@@ -345,6 +345,7 @@ function seek(ms) {
   });
 }
 window.seek = seek;
+seek(0); // render frame 0 up front — during capture h2v then drives seek() itself
 
 // Live-preview autoplay — runs only in the browser, never during capture
 if (!window.__SCRUB__) {
@@ -359,7 +360,7 @@ if (!window.__SCRUB__) {
 }
 ```
 
-The `if (!window.__SCRUB__)` guard is required: in a normal browser it drives `seek` via `requestAnimationFrame` so the page autoplays for preview and survives Reset; during capture h2v sets `window.__SCRUB__ = true` and calls `seek` itself, so the loop must not run and fight it. (The rAF timestamp is fine here — it's outside the render path; the determinism ban applies to the `seek` body.)
+The `if (!window.__SCRUB__)` guard is required: in a normal browser it drives `seek` via `requestAnimationFrame` so the page autoplays for preview and survives Reset; during capture h2v sets `window.__SCRUB__ = true` and calls `seek` itself, so the page must render frame 0 and wait rather than autoplay. (The rAF timestamp is fine here — it's outside the render path; the determinism ban applies to the `seek` body.)
 
 Set `h2v-duration` as usual — it's still what tells h2v how many frames to render. After writing the `seek` function, mentally evaluate it at a few timestamps (0, mid, end) to confirm each element is where it should be: seek is less forgiving than play-driver, so a math slip becomes a wrong frame rather than a small timing wobble.
 
@@ -428,7 +429,7 @@ When producing multiple animations:
 - **Match style across the set.** Use the same palette, typography, surface conventions, and motion language across all animations in the run so they read as a coherent set rather than five different aesthetics. Carry any user-specified theme or palette through every file.
 - **Vary the animation, not the chrome.** The controls bar, layout container, and overall composition stay consistent; what changes between files is the actual visualization.
 
-After a multi-file run finishes, preview them together with `h2v review <directory>` (see *Previewing the output*). One page, all animations, theme toggle for the whole set. The preview stays in sync with the files on disk — edit an animation, save, and the live-reloading page updates on its own; don't re-run `h2v review` between iterations.
+After a multi-file run finishes, preview them together with `h2v review <directory>` (see *Previewing the output*). One page, all animations, with a Reset-all button (plus a page-wide theme switcher when every file declares the same 2+ themes). The preview stays in sync with the files on disk — edit an animation, save, and the live-reloading page updates on its own; don't re-run `h2v review` between iterations.
 
 ## Video export
 
@@ -444,7 +445,7 @@ Animations from this skill can be rendered to MP4 with the `h2v` CLI. The projec
 command -v h2v
 ```
 
-If it's missing, tell the user `h2v` is required for video export and offer to install it. The install steps (Node 18+, `ffmpeg`, and a Chrome/Chromium for Puppeteer are prerequisites):
+If it's missing, tell the user `h2v` is required for video export and offer to install it. The install steps (Node 18+, `ffmpeg`, and a Chrome/Chromium for Puppeteer are prerequisites — Chromium is bundled on macOS and x86_64 Linux; on ARM64 Linux, set `PUPPETEER_EXECUTABLE_PATH` to a system-installed Chromium):
 
 ```bash
 git clone https://github.com/drewharvey/html-to-video.git
@@ -489,17 +490,23 @@ Common variants:
 
 Default output is `./output/<basename>.mp4`. After the run, tell the user where the file landed.
 
-Wall-clock recording time depends on the method. **Play-driver** records at `animation duration × slowdown` (default 6×), so an 8s animation takes ~48s. **Seek-driven** pages (those exposing `window.seek`) are auto-detected and skip the slowdown penalty — h2v jumps frame to frame, so recording is far closer to real time and tolerates higher `--concurrency` without the timing drift that play-driver can show under load. No flag selects the driver; it's chosen by whether `window.seek` is present. Either way, don't poll or interrupt the run.
+Wall-clock recording time depends on the method. **Play-driver** records at `animation duration × slowdown` (default 6×), so an 8s animation takes ~48s. **Seek-driven** pages (those exposing `window.seek`) are auto-detected and skip the slowdown penalty — h2v jumps frame to frame, so recording is far closer to real time and tolerates higher `--concurrency` without the timing drift that play-driver can show under load. No flag selects the driver; it's chosen by whether `window.seek` is present. The export log prints the driver per animation (`driver: seek (frame-perfect, no slowdown)` or `driver: slowdown 6×`) — if a seek-authored file logs `slowdown`, `window.seek` wasn't a function at load time or autoplay wasn't suppressed under `__SCRUB__`. Either way, don't poll or interrupt the run.
 
-For multi-job runs (`--theme all` with 2+ themes, or `h2v export <file1> <file2> …`), pass `--concurrency <N>` to record N jobs in parallel. Each worker is a separate browser process holding a full Chromium plus the 4K capture buffer — a few hundred MB per worker in practice — so memory scales linearly with N. Upstream's example uses `--concurrency 8`, which is a reasonable starting point on a typical dev machine; reduce if memory-constrained, raise toward CPU core count on larger boxes. Single-job runs ignore the flag.
+`--concurrency <N>` (default 1) records with N browsers in parallel:
+
+- **Multi-job runs** (`--theme all` with 2+ themes, a directory, a bundle, or `h2v export <file1> <file2> …`) record N jobs at once.
+- **A single seek-driven animation** is frame-sharded — its frames split across the N browsers and reassembled into one video (byte-identical to a single-browser recording, ~2.5× faster at N=4).
+- **A single play-driver animation** (or a very short clip) stays on one browser; the flag has no effect.
+
+Each worker is a separate Chromium process, roughly 300–500 MB at 4K, so memory scales linearly with N. Upstream's suggested starting points: `3` on 8 GB, `8` on 16 GB, `12` on 32 GB+ (CPU cores cap effective parallelism past ~12). h2v prints a non-blocking warning if it estimates the run will exceed available memory.
 
 ### Quality presets
 
 h2v's default preset (`standard`) is 10-bit HEVC (`libx265`, yuv420p10le) at 4K — visually lossless and free of the 8-bit banding cheaper encodes show. It's the right export for the vast majority of requests, *including* prompts that say "high quality", "high fidelity", or "visually lossless". Don't reach for `--quality-preset` unless the prompt clearly maps to one of the non-default tiers below. One caveat: 10-bit HEVC plays in modern players and Safari but isn't as universally decodable as 8-bit h264 — if the user specifically needs maximum playback compatibility (older devices, embed-anywhere, "must play everywhere"), export `--codec libx264` instead (see **Other codecs**).
 
 - **`draft`** — `h2v export --quality-preset draft file.html`. Triggers: "draft", "quick render", "for review", "fast iteration", "preview render", "rough cut", "as fast as possible". Encode is ~3–4× faster and files are 5–8× smaller, with a visible quality drop. Useful when iterating on motion timing and the final fidelity doesn't matter yet.
-- **`max`** — `h2v export --quality-preset max file.html`. Triggers: "maximum quality", "archival", "best possible", "lossless master", "ProRes 4444", "highest quality". Writes ProRes 4444 in `.mov` (not `.mp4`); files are ~10× larger than the default and encode is slow. Surface those tradeoffs when offering it.
-- **`high`** — only when the user explicitly names the preset itself ("use the high preset", "`--quality-preset high`"). It encodes 10-bit HEVC at full `yuv444p10le` chroma (crf 12, veryslow). For plain "high quality" requests, the default `standard` preset gives equivalent perceptual quality with broader compatibility — use it instead. When `high` is genuinely requested, tell the user its 4:4:4 chroma doesn't decode on Safari or most hardware video decoders; it's a niche distribution-grade format, not a general "make it sharper" knob.
+- **`max`** — `h2v export --quality-preset max file.html`. Triggers: "maximum quality", "archival", "best possible", "lossless master", "ProRes 4444", "highest quality". Writes 12-bit ProRes 4444 in `.mov` (not `.mp4`); files are very large (~10× even ProRes HQ, far beyond the default HEVC) and encode is slow. Surface those tradeoffs when offering it.
+- **`high`** — only when the user explicitly names the preset itself ("use the high preset", "`--quality-preset high`"). It encodes 10-bit HEVC at full `yuv444p10le` chroma (crf 12, veryslow). For plain "high quality" requests, the default `standard` preset gives equivalent perceptual quality with broader compatibility — use it instead. When `high` is genuinely requested, tell the user its 4:4:4 chroma plays in QuickTime/Safari and pro editors but is less broadly hardware-decoded than the default's 4:2:0; it's a distribution-grade format, not a general "make it sharper" knob.
 
 For tuning beyond the presets (custom `--crf`, `--scale`, `--capture-quality`, container overrides), check the upstream docs at https://github.com/drewharvey/html-to-video rather than guessing.
 
@@ -507,21 +514,14 @@ For tuning beyond the presets (custom `--crf`, `--scale`, `--capture-quality`, c
 
 Recording with a transparent background is a common need when the animation is destined for a non-linear editor (After Effects, Premiere, Resolve, CapCut) to be composited over other footage. Trigger alpha export when the prompt mentions: "transparent background", "with alpha", "alpha channel", "transparent video", "transparent .mov", "for overlay", "for compositing", "drop into [NLE]", or names an NLE workflow (e.g. "for After Effects").
 
-**Authoring requirement.** `--alpha` only produces a usable transparent video if the page itself doesn't paint an opaque background. The default template in this skill puts `var(--bg)` on `body`, which would bake into the alpha capture as a solid color. For alpha-bound animations, move the visible background onto a child element that's hidden during recording:
-
-```html
-<body>
-  <div class="bg" data-h2v-hide></div>
-  <!-- animation content -->
-</body>
-```
+**Authoring requirement.** `--alpha` only produces a usable transparent video if the page itself doesn't paint an opaque background. The default template in this skill puts `var(--bg)` on `body`, which would bake into the alpha capture as a solid color. For alpha-bound animations, keep the body background for browser preview but drop it while h2v is recording:
 
 ```css
-body { background: transparent; }
-.bg { position: fixed; inset: 0; background: var(--bg); z-index: -1; }
+body { background: var(--bg); }
+html[data-h2v-recording] body { background: transparent; }
 ```
 
-In the browser the `.bg` layer paints normally; during capture `data-h2v-hide` strips it and the body is transparent. If alpha intent is signaled in the original creation prompt, author the animation this way from the start. If alpha export comes up later for an animation that already paints the body opaquely, edit the HTML before running the export.
+Neither `html` nor `body` may paint an opaque background during capture; element-level backgrounds (cards, panels) are fine and stay opaque against the transparent canvas. Don't move the background onto a separate `data-h2v-hide` element — keep the controls bar as the only `data-h2v-hide` container. If alpha intent is signaled in the original creation prompt, author the animation this way from the start. If alpha export comes up later for an animation that already paints the body opaquely, edit the HTML before running the export.
 
 **Export command:**
 
@@ -556,11 +556,11 @@ When the prompt asks for an animated GIF ("as a gif", "make it a gif", "animated
 h2v export --gif file.html
 ```
 
-Output is an animated GIF at 480p / 20fps by default (override with `--output-height` and `--fps`). GIF is lossy in ways video isn't — 256 colors, dithered gradients, and 1-bit (on/off) transparency — so smooth gradients band and soft edges harden. Steer users toward MP4 unless they specifically need a GIF (inline autoplay in chat, email, or Markdown where a video won't embed). `--gif` is mutually exclusive with `--alpha`, `--codec`, and `--container`.
+Output is an animated GIF at 480p / 20fps by default (override with `--output-height` and `--fps`). GIF is lossy in ways video isn't — 256 colors, dithered gradients, and 1-bit (on/off) transparency — so smooth gradients band and soft edges harden. GIF palette and dithering quality follow `--quality-preset` (`max` = per-frame palette; `draft` = 128 colors, no dither); there's no separate GIF quality flag. Steer users toward MP4/WebM — smaller and higher quality for the web — unless they specifically need a GIF (inline autoplay in chat, email, or Markdown where a video won't embed). `--gif` is mutually exclusive with `--alpha`, `--codec`, and `--container`.
 
 ### Recording-only styling
 
-If something should be hidden or styled differently *only* during capture (e.g. a debug overlay, an FPS meter, a watermark you want for normal viewing but not the video), use `data-h2v-hide` on the element, or condition on the `data-h2v-recording` attribute that `h2v` sets on `<html>` during capture:
+If something should be hidden or styled differently *only* during capture (e.g. a debug overlay, an FPS meter, a watermark you want for normal viewing but not the video), condition on the `data-h2v-recording` attribute that `h2v` sets on `<html>` during capture. Interactive dev affordances (buttons, toggles) belong inside the single `data-h2v-hide` controls bar instead — upstream treats multiple `data-h2v-hide` containers in one animation as a code smell:
 
 ```css
 html[data-h2v-recording] .debug-overlay { display: none; }
@@ -574,8 +574,8 @@ After producing an artifact — a new HTML animation file or an exported MP4 —
 
 - **Single newly created file (HTML or MP4):** open it directly.
 - **Edit to an existing file:** do not re-open. The user almost certainly already has it open; just remind them to refresh.
-- **Multiple HTML animations in one run** (e.g. user asked for "5 animations for X" or "one per bullet point", or `--theme all` producing 2+ HTML variants — though that's rare): use `h2v review <directory>` instead of opening N tabs. This produces a single preview page with each animation in an iframe pointing at its source file on disk, plus reload/replay controls and a theme toggle. The default served page **live-reloads** — edit any animation, save, and the preview updates on its own; **don't re-open or re-run `h2v review` to pick up changes.** Exception: if the input is a bundle, animations inline as `srcdoc` and won't live-reload; re-run `h2v review <bundle>` after bundle edits.
-- **Multiple MP4 exports in one run** (e.g. `h2v export --theme all` producing 2+ MP4s, or batched exports): `h2v review` does not yet support video files (support is coming). For now, fall back to asking the user with three options: *open all / open the first / none*. Yes/no is wrong here — six themes shouldn't mean six windows on a "yes."
+- **Multiple HTML animations in one run** (e.g. user asked for "5 animations for X" or "one per bullet point", or `--theme all` producing 2+ HTML variants — though that's rare): use `h2v review <directory>` instead of opening N tabs. This produces a single preview page with each animation in an iframe pointing at its source file on disk, plus a Reset-all button, per-animation Full screen / Actual size buttons, and a page-wide theme switcher when every animation declares the same set of 2+ themes. The default served page **live-reloads** — edit any animation (or a bundle file), save, and the preview updates on its own; **don't re-open or re-run `h2v review` to pick up changes.**
+- **Multiple MP4 exports in one run** (e.g. `h2v export --theme all` producing 2+ MP4s, or batched exports): `h2v review` only previews HTML, not video files. Fall back to asking the user with three options: *open all / open the first / none*. Yes/no is wrong here — six themes shouldn't mean six windows on a "yes."
 
 ### How to open
 
