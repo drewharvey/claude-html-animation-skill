@@ -11,13 +11,14 @@ The normal loop: ask Claude to create an animation (or a batch of them), iterate
 When you ask Claude Code to create an animation — "animate a deployment sequence," "show a progress bar filling up," "visualize data flowing through a pipeline" — this skill activates and guides Claude to produce animations with:
 
 - A proper color system using CSS custom properties (no hardcoded hex values)
-- Light and dark theme support via a toggle button
+- A single palette by default, with multiple switchable themes (light/dark, brand variants, custom palettes) added when you ask for them
 - Staggered entrance animations instead of everything appearing at once
 - Smooth easing curves and intentional timing
 - Layered surfaces with depth (borders, shadows, elevation)
 - Minimal on-screen text (visuals tell the story, not captions)
-- A consistent controls bar (Reset, Theme toggle)
+- A consistent controls bar (Reset, plus a theme picker when the animation has multiple themes)
 - A clean, self-contained single HTML file with no external dependencies
+- `h2v`-ready metadata, so any animation can be exported to MP4, MOV (including transparent/alpha), WebM, or GIF on request
 
 ## Install
 
@@ -123,27 +124,56 @@ Start a new Claude Code session and try:
 Create an animation showing a grid of servers going offline one by one
 ```
 
-Claude should produce a single HTML file with a dark theme, staggered animations, CSS custom properties for all colors, and a theme toggle in the top corner. Open the file in a browser to preview.
+Claude should produce a single HTML file with a dark palette, staggered animations, CSS custom properties for all colors, an `h2v-duration` meta tag, and a Reset button in the top-right controls bar. The file should open in your browser automatically; if it doesn't, Claude prints the path so you can open it yourself.
+
+To check theming, ask for variants: `...with a light and dark mode`. The controls bar should now include a swatch picker.
+
+To check export (requires `h2v`, see [Video export](#video-export)): `Export that animation to video`.
 
 ## What the skill covers
 
 The `SKILL.md` instructs Claude on:
 
-**Design thinking** — Define the story arc, mood, and what earns its place on screen before writing code.
+**Design thinking** — Define the story arc, mood, what earns its place on screen, and (if the animation may become a video) the recording method before writing code.
 
-**Color system** — A full dark/light palette using CSS custom properties with semantic color assignments (accent, success, warning, error) and surface layering for depth.
+**Recording method** — Two ways to author an animation for export. *Play-driver* uses the normal web idiom (CSS keyframes, transitions, `setTimeout`) and `h2v` records it by slowing the page clock; it's quick to author, but timing can drift under load. *Seek-driven* exposes a deterministic `window.seek(ms)` function that `h2v` calls once per frame; it's frame-perfect and safe at high concurrency, at the cost of interpolating motion by hand. When export is in scope, Claude asks which you want and defaults to seek.
+
+**Color system** — A single palette using CSS custom properties with semantic color assignments (accent, success, warning, error) and surface layering for depth. A cinematic dark palette is the default starting point.
+
+**Multiple themes** — Opt-in. When you ask for light/dark, brand variants, or any set of palettes, Claude adds per-theme palette blocks on a `data-theme` attribute, an `h2v-themes` meta tag, a swatch picker in the controls bar, `sessionStorage` persistence across Reset, a `postMessage` listener for iframe embedding, and a guard that disables theme transitions during recording.
 
 **Typography** — System fonts for UI text, monospace for data and labels. No external font loading. Clear size hierarchy.
 
 **Layout** — Centered viewport, fixed pixel dimensions, generous spacing, consistent border-radius scale, subtle shadows.
 
-**Motion** — Entrance animations (opacity + translateY), CSS transitions for state changes, proper easing curves (no `linear`), staggered timing, and a hold at the end state.
+**Motion** — Entrance animations (opacity + translateY), transitions for state changes, proper easing curves (no `linear`), staggered timing, and a hold at the end state. The same timing values apply to seek-driven animations, just applied through `seek(ms)` instead of CSS and timers.
 
-**Sequencing** — Phased `setTimeout` orchestration with commented timing structure.
+**Sequencing** — Phased `setTimeout` orchestration with commented timing structure (play-driver), or a timeline of eased segments inside `seek(ms)` (seek-driven).
 
-**File structure** — Complete HTML template with theme variables, controls bar, theme toggle, and `postMessage` listener for embedding in iframes.
+**File structure** — Complete HTML template with the palette, `h2v-duration` meta, and a controls bar marked `data-h2v-hide` so it's hidden during capture.
 
-**Common mistakes** — Explicit list of what to avoid: too much text, everything appearing at once, flat layouts, inconsistent radii, hardcoded colors, missing hover states.
+**Multi-animation runs** — Requests like "create 5 animations for X" produce one file per animation in a dedicated directory, with descriptive names and a shared visual style.
+
+**Video export** — How to drive `h2v`: install check, single-file and bundle export, per-theme export, custom viewports (`h2v-viewport`), quality presets, alpha/transparent `.mov` for compositing, other codecs (h264, ProRes, WebM), GIF, and concurrency. Export only runs when you explicitly ask for it.
+
+**Previewing** — Opens a newly created file automatically, reminds you to refresh after edits, and uses `h2v review` for multi-file runs (a single live-reloading page, or a portable snapshot with `--out`). Say "don't open" or "just save" to skip.
+
+**Common mistakes** — Explicit list of what to avoid: too much text, everything appearing at once, no end state, flat layouts, inconsistent radii, no visual hierarchy, hardcoded colors, missing hover states.
+
+## Video export
+
+Export is handled by [html-to-video](https://github.com/drewharvey/html-to-video) (`h2v`), which isn't on npm yet. You need Node 18+, `ffmpeg`, and Chrome/Chromium. Install from source:
+
+```bash
+git clone https://github.com/drewharvey/html-to-video.git
+cd html-to-video
+npm install
+npm install -g .
+```
+
+If `h2v` is missing when you ask for an export, Claude offers to install it and waits for your confirmation first, since `npm install -g` changes your global environment.
+
+Once it's installed, ask in plain language: "export to video", "render all themes as mp4", "export with a transparent background for After Effects", "make it a gif", "quick draft render". Output goes to `./output/` by default. Recording is slow (play-driver animations take about 6× their duration), so Claude never exports as part of creating an animation.
 
 ## Development
 
@@ -153,7 +183,8 @@ The `SKILL.md` instructs Claude on:
 claude-html-animation-skill/
 ├── SKILL.md       # The skill instructions (the only file required at install)
 ├── README.md      # This file
-├── CLAUDE.md      # Notes for editing this repo with Claude Code (sync audits, conventions)
+├── AGENTS.md      # Notes for agents editing this repo (sync audits, conventions)
+├── CLAUDE.md      # Points Claude Code at AGENTS.md
 └── LICENSE        # MIT
 ```
 
@@ -168,7 +199,8 @@ Key areas you might want to customize:
 - **Default color palette** — The skill includes a neutral blue accent. Change this to match your brand or preference.
 - **Typography** — If you prefer a specific font stack, update the typography section.
 - **Animation timing** — The defaults (300–600ms transitions, 60–150ms staggers) produce a balanced feel. Speed them up for snappier output, slow them down for more cinematic motion.
-- **File template** — The controls bar and theme toggle are baked into every animation. Modify the template if you want different controls.
+- **File template** — The controls bar (Reset, plus the theme picker for multi-theme animations) is baked into every animation. Modify the template if you want different controls.
+- **h2v-derived content** — Install steps, CLI flags, defaults, and the authoring contract in `SKILL.md` are copied from h2v's docs and drift as h2v changes. See the sync-audit task in `AGENTS.md`.
 
 ### Testing changes
 

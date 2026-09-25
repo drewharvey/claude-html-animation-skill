@@ -76,7 +76,7 @@ A *theme* is an alternative palette the viewer can switch between. There is no s
 
 Add multiple themes only when the user explicitly asks. Trigger phrases include light/dark requests ("with a light mode", "support both themes") **and** any request for multiple palettes / colorways / brand variants ("add palette options", "let me try different colors", "with these palettes: …", "create different color variants", "add a brand-color variant", "with multiple color schemes"). All of those produce the same output: multiple themes on `data-theme`, driven by the swatch picker, exportable via `h2v export --theme all`.
 
-Six things change:
+Seven things change:
 
 **1. Define each theme as a palette block.** The first theme is the default (uses bare `:root`); each additional theme adds a `:root[data-theme="<name>"]` block that overrides every CSS variable:
 
@@ -397,7 +397,7 @@ Every animation is a single self-contained HTML file:
 </html>
 ```
 
-When the user asks for multiple themes (any palette variants — light/dark, brand palettes, vibrant/navy/microsoft, etc.), add the picker UI, picker JS, palette blocks, `h2v-themes` meta, and early-load restore script — all as shown in the **Multiple themes** subsection above. The restore script is what makes Reset preserve the chosen theme; without it, `location.reload()` reverts to default.
+When the user asks for multiple themes (any palette variants — light/dark, brand palettes, vibrant/navy/google, etc.), add the picker UI, picker JS, palette blocks, `h2v-themes` meta, and early-load restore script — all as shown in the **Multiple themes** subsection above. The restore script is what makes Reset preserve the chosen theme; without it, `location.reload()` reverts to default.
 
 ### Controls bar CSS
 
@@ -603,7 +603,7 @@ Skip auto-open entirely if the request includes any of: "don't open", "just save
 - **Flat layouts.** Use surface layers, borders, and shadows for depth. A card on a background beats content floating in space.
 - **Inconsistent border-radius.** Pick a scale and use it everywhere.
 - **No visual hierarchy.** Something must be the focal point. Size, color, and position establish what the viewer sees first.
-- **Hardcoded colors.** Every hex value is a CSS variable. No exceptions.
+- **Hardcoded colors.** Every hex value is a CSS variable. The only exception is theme-picker swatches (see **Multiple themes**).
 - **Missing hover states.** Buttons need `:hover` feedback.
 
 ## Process
@@ -611,9 +611,9 @@ Skip auto-open entirely if the request includes any of: "don't open", "just save
 1. Read the request and identify the story arc
 2. Choose a palette (use the default or adapt to project context)
 3. Plan the phases: what appears when, what changes, what resolves
-4. Write HTML structure → CSS styles → JS timing
+4. Write HTML structure → CSS styles → JS timing (`setTimeout` phases for play-driver, or a `seek(ms)` function for seek-driven — see **Recording method**)
 5. Walk through the animation mentally, second by second: does every moment have purpose? Is there dead time? Does anything compete for attention?
 6. Include the controls bar (Reset only by default; theme picker only when supporting multiple themes)
 7. Default to a single palette (no theme system, no picker); add multiple themes only when the user asks (any kind of palette variant counts — light/dark, brand colors, custom palettes)
 8. Set the `h2v-duration` meta tag to the total runtime (last animation event + end hold)
-9. Open the file for the user (single new file → auto-open; edits → tell them to refresh; multiple → ask)
+9. Open the file for the user (single new file → auto-open; edits → tell them to refresh; multiple HTML files → `h2v review <directory>`; multiple MP4s → ask) — see **Previewing the output**
